@@ -1,0 +1,2 @@
+ALTER TABLE reservation
+    MODIFY COLUMN status VARCHAR(32) NOT NULL;

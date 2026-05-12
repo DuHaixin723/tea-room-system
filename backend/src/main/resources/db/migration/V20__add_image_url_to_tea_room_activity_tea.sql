@@ -1,0 +1,5 @@
+ALTER TABLE tea_room ADD COLUMN image_url VARCHAR(255);
+
+ALTER TABLE tea ADD COLUMN image_url VARCHAR(255);
+
+ALTER TABLE activity ADD COLUMN image_url VARCHAR(255);

@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: tea-room-management-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/tea_room_management?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.tea.management: info
+
+app:
+  file:
+    upload-dir: uploads
+  security:
+    jwt-secret: tea-room-management-secret-key-for-jwt-demo-2026
+    jwt-expire-hours: 24
+  ai:
+    enabled: ${APP_AI_ENABLED:true}
+    api-key: ${APP_AI_API_KEY:}
+    base-url: ${APP_AI_BASE_URL:https://api.openai.com/v1}
+    model: ${APP_AI_MODEL:gpt-4o-mini}
+    system-prompt: ${APP_AI_SYSTEM_PROMPT:你是茶室管理平台内置的 AI 助手。请始终使用简体中文回答，优先给出直接、实用、礼貌的建议。你可以帮助用户理解预约、茶室、茶叶购买、会员充值、活动报名和平台功能。回答请使用清晰的 Markdown，适度分段，避免空泛。}

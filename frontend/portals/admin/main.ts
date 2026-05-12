@@ -1,0 +1,2 @@
+import '@/portals/admin/main'
+

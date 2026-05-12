@@ -1,0 +1,433 @@
+@startuml
+title 茶室管理系统主要类图
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty members
+
+package "通用基类" {
+  abstract class "BaseEntity（基础实体）" as BaseEntity {
+    id：Long
+    createdAt：LocalDateTime
+    updatedAt：LocalDateTime
+    --
+    onCreate()：void
+    onUpdate()：void
+  }
+}
+
+note top of BaseEntity
+实体类之间多数通过 xxxId 字段建立外键关系，
+因此图中实体关联以“基于外键的单向关联/关联”为准。
+end note
+
+package "领域实体" {
+  class "User（用户）" as User {
+    username：String
+    password：String
+    nickname：String
+    phone：String
+    email：String
+    avatarUrl：String
+    staffRealName：String
+    staffIdCardNo：String
+    staffCertificationUrl：String
+    staffCertificationImages：String
+    staffApplicationNote：String
+    staffApprovalStatus：StaffApprovalStatus
+    staffApprovalRemark：String
+    role：RoleType
+    enabled：Boolean
+  }
+
+  class "MemberAccount（会员账户）" as MemberAccount {
+    userId：Long
+    balance：BigDecimal
+    cumulativeRecharge：BigDecimal
+    cumulativeSpend：BigDecimal
+    memberLevel：String
+  }
+
+  class "TeaRoomType（茶室类型）" as TeaRoomType {
+    name：String
+    description：String
+    basePrice：BigDecimal
+    pricingMode：TeaRoomPricingMode
+    minCapacity：Integer
+    maxCapacity：Integer
+  }
+
+  class "TeaRoom（茶室）" as TeaRoom {
+    typeId：Long
+    staffUserId：Long
+    name：String
+    capacity：Integer
+    enabled：Boolean
+    location：String
+    imageUrl：String
+    businessStartTime：LocalTime
+    businessEndTime：LocalTime
+    description：String
+  }
+
+  class "Tea（茶叶）" as Tea {
+    name：String
+    category：String
+    price：BigDecimal
+    stock：Integer
+    imageUrl：String
+    description：String
+    enabled：Boolean
+  }
+
+  class "Reservation（预约）" as Reservation {
+    userId：Long
+    teaRoomId：Long
+    reservedStartTime：LocalDateTime
+    reservedEndTime：LocalDateTime
+    partySize：Integer
+    status：ReservationStatus
+    remark：String
+  }
+
+  class "ProductOrder（订单）" as ProductOrder {
+    orderNo：String
+    userId：Long
+    reservationId：Long
+    amount：BigDecimal
+    status：OrderStatus
+    paymentMethod：PaymentMethod
+  }
+
+  class "OrderItem（订单项）" as OrderItem {
+    orderId：Long
+    teaId：Long
+    quantity：Integer
+    unitPrice：BigDecimal
+  }
+
+  class "Activity（活动）" as Activity {
+    creatorUserId：Long
+    creatorRole：RoleType
+    title：String
+    content：String
+    startTime：LocalDateTime
+    endTime：LocalDateTime
+    capacity：Integer
+    imageUrl：String
+    status：ActivityStatus
+    summaryContent：String
+    summarySubmittedAt：LocalDateTime
+  }
+
+  class "ActivityRegistration（活动报名）" as ActivityRegistration {
+    activityId：Long
+    userId：Long
+    cancelled：Boolean
+  }
+
+  class "Notification（通知）" as Notification {
+    recipientUserId：Long
+    type：String
+    title：String
+    content：String
+    targetType：String
+    targetId：Long
+    routePath：String
+    read：Boolean
+  }
+}
+
+package "控制层" {
+  class "AuthController（认证控制器）" as AuthController {
+    register()：ApiResponse<UserResponse>
+    login()：ApiResponse<LoginResponse>
+  }
+
+  class "UserController（用户控制器）" as UserController {
+    list()：ApiResponse<PageResponse<UserResponse>>
+    reviewStaffApproval()：ApiResponse<UserResponse>
+    recharge()：ApiResponse<MemberAccountResponse>
+    changePassword()：ApiResponse<Void>
+  }
+
+  class "TeaController（茶叶控制器）" as TeaController {
+    list()：ApiResponse<PageResponse<TeaResponse>>
+    create()：ApiResponse<TeaResponse>
+    update()：ApiResponse<TeaResponse>
+    delete()：ApiResponse<Void>
+  }
+
+  class "TeaRoomController（茶室控制器）" as TeaRoomController {
+    listTypes()：ApiResponse<PageResponse<TeaRoomTypeResponse>>
+    listRooms()：ApiResponse<PageResponse<TeaRoomResponse>>
+    createRoom()：ApiResponse<TeaRoomResponse>
+    updateRoom()：ApiResponse<TeaRoomResponse>
+  }
+
+  class "ReservationController（预约控制器）" as ReservationController {
+    list()：ApiResponse<PageResponse<ReservationResponse>>
+    availability()：ApiResponse<ReservationAvailabilityResponse>
+    create()：ApiResponse<ReservationResponse>
+    updateStatus()：ApiResponse<ReservationResponse>
+  }
+
+  class "OrderController（订单控制器）" as OrderController {
+    list()：ApiResponse<PageResponse<OrderSummaryResponse>>
+    detail()：ApiResponse<OrderDetailResponse>
+    create()：ApiResponse<OrderSummaryResponse>
+    pay()：ApiResponse<OrderSummaryResponse>
+    updateStatus()：ApiResponse<OrderSummaryResponse>
+  }
+
+  class "ActivityController（活动控制器）" as ActivityController {
+    list()：ApiResponse<PageResponse<ActivityResponse>>
+    create()：ApiResponse<ActivityResponse>
+    updateStatus()：ApiResponse<ActivityResponse>
+    register()：ApiResponse<ActivityRegistrationResponse>
+    cancel()：ApiResponse<ActivityRegistrationResponse>
+  }
+
+  class "NotificationController（通知控制器）" as NotificationController {
+    page()：ApiResponse<PageResponse<NotificationResponse>>
+    unreadCount()：ApiResponse<Long>
+    markRead()：ApiResponse<Void>
+    markAllRead()：ApiResponse<Integer>
+  }
+}
+
+package "服务层" {
+  class "AuthService（认证服务）" as AuthService {
+    register()：User
+    login()：LoginResponse
+  }
+
+  class "UserService（用户服务）" as UserService {
+    listAll()：Page<User>
+    reviewStaffApproval()：User
+    recharge()：MemberAccount
+    changePassword()：void
+    getAccount()：MemberAccount
+  }
+
+  class "TeaService（茶叶服务）" as TeaService {
+    list()：Page<Tea>
+    create()：Tea
+    update()：Tea
+    get()：Tea
+  }
+
+  class "TeaRoomService（茶室服务）" as TeaRoomService {
+    listTypes()：Page<TeaRoomType>
+    createType()：TeaRoomType
+    listRooms()：Page<TeaRoom>
+    createRoom()：TeaRoom
+    updateRoom()：TeaRoom
+  }
+
+  class "ReservationService（预约服务）" as ReservationService {
+    create()：Reservation
+    availability()：ReservationAvailabilityResponse
+    updateStatus()：Reservation
+    requireReservation()：Reservation
+    completeExpiredReservations()：int
+  }
+
+  class "OrderService（订单服务）" as OrderService {
+    create()：ProductOrder
+    pay()：ProductOrder
+    updateItems()：ProductOrder
+    updateStatus()：ProductOrder
+    createReservationOrder()：ProductOrder
+    detail()：OrderDetailResponse
+  }
+
+  class "ActivityService（活动服务）" as ActivityService {
+    listActivities()：Page<Activity>
+    createActivity()：Activity
+    updateStatus()：Activity
+    register()：ActivityRegistration
+    cancelRegistration()：ActivityRegistration
+  }
+
+  class "NotificationService（通知服务）" as NotificationService {
+    listByRecipient()：Page<Notification>
+    unreadCount()：long
+    markRead()：void
+    create()：Notification
+    notifyAdmins()：void
+  }
+
+  class "JwtTokenService（JWT令牌服务）" as JwtTokenService {
+    generate()：String
+  }
+
+  class "MemberLevelService（会员等级服务）" as MemberLevelService {
+    resolveLevel()：String
+  }
+}
+
+package "仓储层" {
+  interface "JpaRepository（JPA仓储接口）" as JpaRepository {
+    save()：T
+    findById()：Optional<T>
+    findAll()：Page<T>
+    deleteById()：void
+  }
+
+  interface "UserRepository（用户仓储）" as UserRepository {
+    findByUsername()：Optional<User>
+    existsByUsername()：boolean
+    findByRole()：Page<User>
+  }
+
+  interface "MemberAccountRepository（会员账户仓储）" as MemberAccountRepository {
+    findByUserId()：Optional<MemberAccount>
+    findByMemberLevel()：List<MemberAccount>
+  }
+
+  interface "TeaRepository（茶叶仓储）" as TeaRepository {
+    search()：Page<Tea>
+  }
+
+  interface "TeaRoomTypeRepository（茶室类型仓储）" as TeaRoomTypeRepository
+
+  interface "TeaRoomRepository（茶室仓储）" as TeaRoomRepository {
+    findByTypeId()：List<TeaRoom>
+    findByStaffUserId()：Page<TeaRoom>
+    existsByIdAndStaffUserId()：boolean
+  }
+
+  interface "ReservationRepository（预约仓储）" as ReservationRepository {
+    findByUserId()：Page<Reservation>
+    findByTeaRoomIdIn()：Page<Reservation>
+    findByStatusInAndReservedEndTimeBefore()：List<Reservation>
+  }
+
+  interface "ProductOrderRepository（订单仓储）" as ProductOrderRepository {
+    findByUserId()：Page<ProductOrder>
+    findByReservationIdIn()：Page<ProductOrder>
+    existsByReservationIdAndStatus()：boolean
+  }
+
+  interface "OrderItemRepository（订单项仓储）" as OrderItemRepository {
+    findByOrderId()：List<OrderItem>
+    deleteByOrderId()：void
+  }
+
+  interface "ActivityRepository（活动仓储）" as ActivityRepository {
+    findByStatusAndEndTimeAfter()：Page<Activity>
+    findByStatusAndEndTimeBefore()：List<Activity>
+  }
+
+  interface "ActivityRegistrationRepository（活动报名仓储）" as ActivityRegistrationRepository {
+    findByUserId()：Page<ActivityRegistration>
+    findByActivityId()：List<ActivityRegistration>
+  }
+
+  interface "NotificationRepository（通知仓储）" as NotificationRepository {
+    findByRecipientUserIdOrderByCreatedAtDesc()：Page<Notification>
+    countByRecipientUserIdAndReadFalse()：long
+    markRead()：int
+    markAllRead()：int
+  }
+}
+
+User --|> BaseEntity
+MemberAccount --|> BaseEntity
+TeaRoomType --|> BaseEntity
+TeaRoom --|> BaseEntity
+Tea --|> BaseEntity
+Reservation --|> BaseEntity
+ProductOrder --|> BaseEntity
+OrderItem --|> BaseEntity
+Activity --|> BaseEntity
+ActivityRegistration --|> BaseEntity
+Notification --|> BaseEntity
+
+UserRepository --|> JpaRepository
+MemberAccountRepository --|> JpaRepository
+TeaRepository --|> JpaRepository
+TeaRoomTypeRepository --|> JpaRepository
+TeaRoomRepository --|> JpaRepository
+ReservationRepository --|> JpaRepository
+ProductOrderRepository --|> JpaRepository
+OrderItemRepository --|> JpaRepository
+ActivityRepository --|> JpaRepository
+ActivityRegistrationRepository --|> JpaRepository
+NotificationRepository --|> JpaRepository
+
+AuthController ..> AuthService : 依赖
+UserController ..> UserService : 依赖
+TeaController ..> TeaService : 依赖
+TeaRoomController ..> TeaRoomService : 依赖
+ReservationController ..> ReservationService : 依赖
+ReservationController ..> OrderService : 依赖
+OrderController ..> OrderService : 依赖
+ActivityController ..> ActivityService : 依赖
+NotificationController ..> NotificationService : 依赖
+
+AuthService ..> UserRepository : 依赖
+AuthService ..> MemberAccountRepository : 依赖
+AuthService ..> JwtTokenService : 依赖
+AuthService ..> NotificationService : 依赖
+
+UserService ..> UserRepository : 依赖
+UserService ..> MemberAccountRepository : 依赖
+UserService ..> MemberLevelService : 依赖
+UserService ..> NotificationService : 依赖
+
+TeaService ..> TeaRepository : 依赖
+
+TeaRoomService ..> TeaRoomTypeRepository : 依赖
+TeaRoomService ..> TeaRoomRepository : 依赖
+
+ReservationService ..> ReservationRepository : 依赖
+ReservationService ..> TeaRoomRepository : 依赖
+ReservationService ..> TeaRoomTypeRepository : 依赖
+ReservationService ..> NotificationService : 依赖
+
+OrderService ..> ProductOrderRepository : 依赖
+OrderService ..> OrderItemRepository : 依赖
+OrderService ..> TeaRepository : 依赖
+OrderService ..> ReservationRepository : 依赖
+OrderService ..> TeaRoomRepository : 依赖
+OrderService ..> TeaRoomTypeRepository : 依赖
+OrderService ..> MemberAccountRepository : 依赖
+OrderService ..> MemberLevelService : 依赖
+OrderService ..> NotificationService : 依赖
+
+ActivityService ..> ActivityRepository : 依赖
+ActivityService ..> ActivityRegistrationRepository : 依赖
+ActivityService ..> NotificationService : 依赖
+
+NotificationService ..> NotificationRepository : 依赖
+NotificationService ..> UserRepository : 依赖
+
+UserRepository ..> User : 管理
+MemberAccountRepository ..> MemberAccount : 管理
+TeaRepository ..> Tea : 管理
+TeaRoomTypeRepository ..> TeaRoomType : 管理
+TeaRoomRepository ..> TeaRoom : 管理
+ReservationRepository ..> Reservation : 管理
+ProductOrderRepository ..> ProductOrder : 管理
+OrderItemRepository ..> OrderItem : 管理
+ActivityRepository ..> Activity : 管理
+ActivityRegistrationRepository ..> ActivityRegistration : 管理
+NotificationRepository ..> Notification : 管理
+
+User *-- MemberAccount : 1 对 1\nuserId
+TeaRoomType o-- TeaRoom : 1 对多\ntypeId
+User --> TeaRoom : staffUserId
+User --> Reservation : userId
+TeaRoom --> Reservation : teaRoomId
+User --> ProductOrder : userId
+Reservation --> ProductOrder : reservationId
+ProductOrder *-- OrderItem : 1 对多\norderId
+OrderItem --> Tea : teaId
+User --> Activity : creatorUserId
+Activity *-- ActivityRegistration : 1 对多\nactivityId
+User --> ActivityRegistration : userId
+User --> Notification : recipientUserId
+
+@enduml
