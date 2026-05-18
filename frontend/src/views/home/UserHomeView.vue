@@ -5,15 +5,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
-import { activityApi, orderApi, reservationApi, teaApi, teaRoomApi } from '@/api/modules/management'
+import { activityApi, teaApi, teaRoomApi } from '@/api/modules/management'
 import { fetchRecommendations } from '@/api/modules/dashboard'
 import { useAuthStore } from '@/stores/auth'
 import { resolveAssetUrl } from '@/utils/asset'
 import type {
   ActivityRecord,
-  OrderRecord,
   RecommendationRecord,
-  ReservationRecord,
   TeaRecord,
   TeaRoomRecord,
 } from '@/types/business'
@@ -27,8 +25,6 @@ const recommended = ref<RecommendationRecord | null>(null)
 const teaRooms = ref<TeaRoomRecord[]>([])
 const teas = ref<TeaRecord[]>([])
 const activities = ref<ActivityRecord[]>([])
-const myReservations = ref<ReservationRecord[]>([])
-const myOrders = ref<OrderRecord[]>([])
 const alive = ref(true)
 
 const nickname = computed(() => authStore.user?.nickname || authStore.user?.username || '用户')
@@ -47,13 +43,6 @@ const teaShowcase = computed(() => {
   const source = recommended.value?.recommendedTeas?.length ? recommended.value.recommendedTeas : teas.value
   return source.slice(0, 6)
 })
-const upcomingReservations = computed(() => myReservations.value.filter((item) => ['PENDING', 'CONFIRMED', 'USER_CHECKED_IN'].includes(item.status)).length)
-const pendingOrders = computed(() => myOrders.value.filter((item) => ['PENDING_PAYMENT', 'PAID', 'PREPARING'].includes(item.status)).length)
-const totalSpent = computed(() => myOrders.value
-  .filter((item) => item.status !== 'REFUNDED')
-  .reduce((sum, item) => sum + Number(item.amount || 0), 0)
-  .toFixed(2))
-
 const roomImage = (room: TeaRoomRecord) => resolveAssetUrl(room.imageUrl) || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80'
 const teaImage = (tea: TeaRecord) => resolveAssetUrl(tea.imageUrl) || 'https://images.unsplash.com/photo-1563822249548-9a72b6353cd1?auto=format&fit=crop&w=900&q=80'
 const activityImage = (activity: ActivityRecord) => resolveAssetUrl(activity.imageUrl) || 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80'
@@ -63,20 +52,16 @@ async function load() {
   loading.value = true
   try {
     const userId = authStore.user?.id
-    const [roomPage, teaPage, activityPage, reservationPage, orderPage, rec] = await Promise.all([
+    const [roomPage, teaPage, activityPage, rec] = await Promise.all([
       teaRoomApi.rooms({ page: 0, size: 8, sort: 'id,desc' }),
       teaApi.page({ page: 0, size: 8, sort: 'id,desc' }),
       activityApi.page({ page: 0, size: 12, sort: 'id,desc' }),
-      reservationApi.page({ page: 0, size: 6, userId }),
-      orderApi.page({ page: 0, size: 6, userId }),
       userId ? fetchRecommendations(userId) : Promise.resolve({ recommendedTeas: [], recommendedTeaRooms: [] }),
     ])
 
     teaRooms.value = roomPage.content ?? []
     teas.value = teaPage.content ?? []
     activities.value = activityPage.content ?? []
-    myReservations.value = reservationPage.content ?? []
-    myOrders.value = orderPage.content ?? []
     recommended.value = rec ?? null
   } catch (error) {
     console.error(error)
@@ -158,21 +143,6 @@ onBeforeUnmount(() => {
           <el-button size="large" @click="router.push('/teas')">茶叶商城</el-button>
         </div>
       </div>
-
-      <div class="hero-board__stats">
-        <div class="stat-card">
-          <span>待使用预约</span>
-          <strong>{{ upcomingReservations }}</strong>
-        </div>
-        <div class="stat-card">
-          <span>进行中订单</span>
-          <strong>{{ pendingOrders }}</strong>
-        </div>
-        <div class="stat-card stat-card--accent">
-          <span>累计消费</span>
-          <strong>¥{{ totalSpent }}</strong>
-        </div>
-      </div>
     </section>
 
     <section class="quick-strip">
@@ -246,7 +216,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="content-grid">
+    <section class="content-grid content-grid--single">
       <div class="section-card">
         <div class="section-card__body">
           <div class="section-head">
@@ -271,48 +241,17 @@ onBeforeUnmount(() => {
           <el-empty v-else description="暂无活动内容" />
         </div>
       </div>
-
-      <div class="section-card">
-        <div class="section-card__body">
-          <div class="section-head">
-            <div>
-              <span class="section-tag">Recent Updates</span>
-              <h3>预约与订单</h3>
-            </div>
-          </div>
-
-          <div v-if="myReservations.length" class="timeline-list">
-            <article v-for="item in myReservations.slice(0, 3)" :key="item.id" class="timeline-card">
-              <div class="timeline-card__line"></div>
-              <div class="timeline-card__body">
-                <strong>#{{ item.id }} · {{ formatStatus('reservation', item.status) }}</strong>
-                <span>{{ dayjs(item.reservedStartTime).format('YYYY-MM-DD HH:mm') }}</span>
-                <p>预约人数 {{ item.partySize }} 人</p>
-              </div>
-            </article>
-          </div>
-          <el-empty v-else description="还没有预约记录" />
-
-          <div v-if="myOrders.length" class="order-list">
-            <article v-for="item in myOrders.slice(0, 3)" :key="item.id" class="order-card">
-              <div>
-                <strong>{{ item.orderNo }}</strong>
-                <span>{{ formatStatus('order', item.status) }}</span>
-              </div>
-              <em>¥{{ item.amount }}</em>
-            </article>
-          </div>
-          <el-empty v-else description="还没有订单记录" />
-        </div>
-      </div>
     </section>
   </div>
 </template>
 
 <style scoped>
 .user-home {
+  --home-content-width: 1480px;
   display: flex;
   flex-direction: column;
+  width: min(100%, var(--home-content-width));
+  margin: 0 auto;
   gap: 18px;
 }
 
@@ -320,6 +259,13 @@ onBeforeUnmount(() => {
 .content-grid {
   display: grid;
   gap: 18px;
+}
+
+.home-carousel,
+.hero-board {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .carousel-body {
@@ -431,8 +377,7 @@ onBeforeUnmount(() => {
 .quick-strip,
 .section-head,
 .room-card__top,
-.room-card__meta,
-.order-card {
+.room-card__meta {
   display: flex;
   align-items: center;
 }
@@ -443,7 +388,6 @@ onBeforeUnmount(() => {
 }
 
 .hero-board {
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.82fr);
   padding: 28px;
   border-radius: 34px;
   background:
@@ -491,8 +435,7 @@ onBeforeUnmount(() => {
 
 .hero-board p,
 .room-card p,
-.activity-card__body p,
-.timeline-card__body p {
+.activity-card__body p {
   margin: 0;
   color: #617f73;
   line-height: 1.8;
@@ -504,40 +447,10 @@ onBeforeUnmount(() => {
   margin-top: 22px;
 }
 
-.hero-board__stats {
-  display: grid;
-  gap: 12px;
-}
-
-.stat-card {
-  padding: 18px 20px;
-  border: 1px solid rgba(28, 86, 67, 0.1);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.stat-card span {
-  color: #668276;
-  font-size: 13px;
-}
-
-.stat-card strong {
-  display: block;
-  margin-top: 10px;
-  color: #214d3e;
-  font-size: 32px;
-}
-
-.stat-card--accent {
-  background: linear-gradient(135deg, #235844, #8cc4ab);
-}
-
-.stat-card--accent span,
-.stat-card--accent strong {
-  color: #fffaf3;
-}
-
 .quick-strip {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
   gap: 14px;
 }
 
@@ -570,7 +483,14 @@ onBeforeUnmount(() => {
 }
 
 .content-grid {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.content-grid--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .section-head {
@@ -685,8 +605,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.tea-card__body em,
-.order-card em {
+.tea-card__body em {
   color: #1e5a45;
   font-style: normal;
   font-weight: 800;
@@ -717,60 +636,6 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
-.timeline-list,
-.order-list {
-  display: grid;
-  gap: 12px;
-}
-
-.timeline-card {
-  position: relative;
-  padding-left: 18px;
-}
-
-.timeline-card__line {
-  position: absolute;
-  top: 10px;
-  bottom: -10px;
-  left: 2px;
-  width: 2px;
-  background: linear-gradient(180deg, #2f6a56, rgba(47, 106, 86, 0.08));
-}
-
-.timeline-card__body {
-  padding: 14px 16px;
-  border: 1px solid rgba(27, 92, 72, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.timeline-card__body strong,
-.order-card strong {
-  display: block;
-  color: #21473a;
-}
-
-.timeline-card__body span,
-.order-card span {
-  display: block;
-  margin-top: 6px;
-  color: #6a8579;
-  font-size: 13px;
-}
-
-.order-card {
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px;
-  border: 1px solid rgba(27, 92, 72, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.order-card em {
-  font-size: 24px;
-}
-
 @media (max-width: 1100px) {
   .hero-board,
   .content-grid,
@@ -793,6 +658,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .user-home {
+    gap: 16px;
+  }
+
   .hero-board {
     padding: 22px;
   }
